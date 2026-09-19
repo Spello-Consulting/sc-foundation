@@ -85,7 +85,7 @@ def main():
     logger.log_message("This is a test message at the summary level.", "summary")
 
     # Send a test SMS if Twilio is configured
-    test_sms(logger)
+    # test_sms(logger)
 
     # Setup email
     email_settings = config.get_email_settings()

@@ -234,7 +234,7 @@ class SCLogger:
         # Store the email settings in the config object
         self.email_settings = email_settings
 
-    def send_email(self, subject: str, body: str | Path, test_mode: bool = False) -> bool:  # noqa: PLR0911, PLR0912, PLR0915
+    def send_email(self, subject: str, body: str | Path, test_mode: bool = False, send_to_email: str | None = None) -> bool:  # noqa: PLR0911, PLR0912, PLR0915
         """
         Sends an email using the SMTP server previously specified in register_email_settings().
 
@@ -248,6 +248,7 @@ class SCLogger:
                 4. A string or Path containing the path to an text file to read the body from
 
             test_mode (bool, optional): If True, the email will not be sent, but a message will be logged indicating that the email would have been sent. Defaults to False.
+            send_to_email (str | None, optional): The email address to send the email to. If None, the email will be sent to the default recipient specified in the email settings. Defaults to None.
 
         Returns:
             result (bool): True if the email was sent successfully, False otherwise.
@@ -312,7 +313,7 @@ class SCLogger:
 
         # Load the Gmail SMTP server configuration
         sender_email = self.email_settings.get("SMTPUsername")
-        send_to = self.email_settings.get("SendEmailsTo")
+        send_to = send_to_email if send_to_email is not None else self.email_settings.get("SendEmailsTo")
         smtp_server = self.email_settings.get("SMTPServer")
         smtp_port = self.email_settings.get("SMTPPort", 587)
         smtp_password = self.email_settings.get("SMTPPassword")
