@@ -1253,6 +1253,9 @@
         <p>Returns the email settings from environment variables and/or the config file.</p>
 <p>Environment variables take precedence over config file settings. If email is disabled or not configured correctly, this method will return None.
 Warnings will be logged and included in the email body if the SMTPUsername, SMTPPassword, or SendEmailsTo settings are present in the config file.</p>
+<p>The SMTPSecurity setting (SMTP_SECURITY environment variable) selects how the connection to the SMTP server is secured: "starttls"
+(connect in plain text then upgrade, typically port 587) or "ssl" (implicit TLS, typically port 465). If not set, "ssl" is used when
+the port is 465, otherwise "starttls".</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1302,6 +1305,29 @@ Warnings will be logged and included in the email body if the SMTPUsername, SMTP
             <td>
               <div class="doc-md-description">
                 <p>A dictionary of email settings or None if email is disabled or not configured correctly.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the SMTP_SECURITY environment variable or the SMTPSecurity config setting is not one of "starttls" or "ssl".</p>
               </div>
             </td>
           </tr>

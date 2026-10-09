@@ -783,6 +783,8 @@ Email:
   EnableEmail: True
   SMTPServer: smtp.gmail.com
   SMTPPort: 587
+  # Optional. One of: starttls; ssl. If not set, ssl is used for port 465, otherwise starttls.
+  SMTPSecurity: starttls
   SubjectPrefix: 
 </code></pre>
 <h3 id="configuration-parameters">Configuration Parameters</h3>
@@ -836,7 +838,12 @@ Email:
 <tr>
 <td style="text-align: left;">SMTPPort</td>
 <td style="text-align: left;">SMTP_PORT</td>
-<td style="text-align: left;">The port number to use to connect to the SMTP server. If using a Google account, set to 587</td>
+<td style="text-align: left;">The port number to use to connect to the SMTP server. Defaults to 587. If using a Google account, set to 587 (STARTTLS) or 465 (implicit TLS)</td>
+</tr>
+<tr>
+<td style="text-align: left;">SMTPSecurity</td>
+<td style="text-align: left;">SMTP_SECURITY</td>
+<td style="text-align: left;">Optional. How the connection to the SMTP server is secured. One of: <em>starttls</em> (connect then upgrade to TLS, typically port 587 or 2525) or <em>ssl</em> (implicit TLS, typically port 465). If not set, <em>ssl</em> is used when SMTPPort is 465, otherwise <em>starttls</em>. The server's TLS certificate and hostname are always verified, so a server with a self-signed, expired or mismatched certificate will be refused.</td>
 </tr>
 <tr>
 <td style="text-align: left;">SMTPUsername</td>
