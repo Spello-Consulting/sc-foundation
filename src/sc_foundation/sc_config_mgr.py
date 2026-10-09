@@ -250,11 +250,18 @@ class SCConfigManager:
         Environment variables take precedence over config file settings. If email is disabled or not configured correctly, this method will return None.
         Warnings will be logged and included in the email body if the SMTPUsername, SMTPPassword, or SendEmailsTo settings are present in the config file.
 
+        The SMTPSecurity setting (SMTP_SECURITY environment variable) selects how the connection to the SMTP server is secured: "starttls"
+        (connect in plain text then upgrade, typically port 587) or "ssl" (implicit TLS, typically port 465). If not set, "ssl" is used when
+        the port is 465, otherwise "starttls".
+
         Args:
             config_section (Optional[str], optional): The section in the config file where email settings are stored.
 
         Returns:
             settings (dict): A dictionary of email settings or None if email is disabled or not configured correctly.
+
+        Raises:
+            RuntimeError: If the SMTP_SECURITY environment variable or the SMTPSecurity config setting is not one of "starttls" or "ssl".
         """
         # fir check to see if we have an EnableEmail setting
         enable_email = os.environ.get("SMTP_ENABLE")
@@ -265,9 +272,19 @@ class SCConfigManager:
             enable_email = self.get(config_section, "EnableEmail", default=True)
             if not enable_email:
                 return None
+
+        # Work out the security mode, which defaults from the port number if not specified
+        smtp_port = int(os.environ.get("SMTP_PORT") or self.get(config_section, "SMTPPort", default=587))  # pyright: ignore[reportArgumentType]
+        default_security = "ssl" if smtp_port == 465 else "starttls"
+        smtp_security = str(os.environ.get("SMTP_SECURITY") or self.get(config_section, "SMTPSecurity") or default_security).strip().lower()
+        if smtp_security not in {"starttls", "ssl"}:
+            msg = f"Invalid SMTP security mode '{smtp_security}'. SMTP_SECURITY / {config_section}.SMTPSecurity must be one of: starttls, ssl."
+            raise RuntimeError(msg)
+
         email_settings = {
             "SMTPServer": os.environ.get("SMTP_SERVER") or self.get(config_section, "SMTPServer"),
-            "SMTPPort": int(os.environ.get("SMTP_PORT") or self.get(config_section, "SMTPPort", default=587)),  # pyright: ignore[reportArgumentType]
+            "SMTPPort": smtp_port,
+            "SMTPSecurity": smtp_security,
             "SMTPUsername": os.environ.get("SMTP_USERNAME") or self.get(config_section, "SMTPUsername"),
             "SMTPPassword": os.environ.get("SMTP_PASSWORD") or self.get(config_section, "SMTPPassword"),
             "FromEmail": os.environ.get("SMTP_FROM_EMAIL") or self.get(config_section, "FromEmail") or

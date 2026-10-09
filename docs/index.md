@@ -51,6 +51,8 @@ Email:
   EnableEmail: True
   SMTPServer: smtp.gmail.com
   SMTPPort: 587
+  # Optional. One of: starttls; ssl. If not set, ssl is used for port 465, otherwise starttls.
+  SMTPSecurity: starttls
   SubjectPrefix: 
 ```
 
@@ -71,7 +73,8 @@ Email:
 |:--|:--|:--|
 | EnableEmail | SMTP_ENABLE | Set to *True* if you want to allow the app to send emails. If True, the remaining settings in this section must be configured correctly. | 
 | SMTPServer | SMTP_SERVER | The SMTP host name that supports TLS encryption. If using a Google account, set to smtp.gmail.com |
-| SMTPPort | SMTP_PORT | The port number to use to connect to the SMTP server. If using a Google account, set to 587 |
+| SMTPPort | SMTP_PORT | The port number to use to connect to the SMTP server. Defaults to 587. If using a Google account, set to 587 (STARTTLS) or 465 (implicit TLS) |
+| SMTPSecurity | SMTP_SECURITY | Optional. How the connection to the SMTP server is secured. One of: *starttls* (connect then upgrade to TLS, typically port 587 or 2525) or *ssl* (implicit TLS, typically port 465). If not set, *ssl* is used when SMTPPort is 465, otherwise *starttls*. The server's TLS certificate and hostname are always verified, so a server with a self-signed, expired or mismatched certificate will be refused. |
 | SMTPUsername | SMTP_USERNAME | Your username used to login to the SMTP server. If using a Google account, set to your Google email address. Alternatively, set the SMTP_USERNAME environment variable.  |
 | SMTPPassword | SMTP_PASSWORD | The password used to login to the SMTP server. If using a Google account, create an app password for the app at https://myaccount.google.com/apppasswords. Alternatively, set the SMTP_PASSWORD environment variable.  |
 | SendEmailsTo | SMTP_SEND_TO_EMAIL | Email address to send emails to |

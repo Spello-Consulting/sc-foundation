@@ -204,8 +204,10 @@ class SCLogger:
 
             SMTPServer: str, the SMTP server address
             SMTPPort: int, the SMTP server port (optional, defaults to 587)
+            SMTPSecurity: str, how the connection is secured: "starttls" or "ssl" (implicit TLS). Optional, defaults to "ssl" if
+                SMTPPort is 465, otherwise "starttls".
             SMTPUsername: str, the username for the SMTP server
-            SMTPPassword: str, the password for the SMTP server (preferably an App Password)
+            SMTPPassword: str, the password for the SMTP server (an app password or API token, if your provider requires one)
             FromEmail: str, the emal address that the email comes from. If none, the SMTPUsername will be used.
             SendEmailsTo: str, the email address to send emails to
             SubjectPrefix: str, a prefix for email subjects (optional, default to None)
@@ -235,7 +237,7 @@ class SCLogger:
         # Store the email settings in the config object
         self.email_settings = email_settings
 
-    def send_email(self, subject: str, body: str | Path, test_mode: bool = False, send_to_email: str | None = None) -> bool:  # noqa: PLR0911, PLR0912, PLR0915
+    def send_email(self, subject: str, body: str | Path, test_mode: bool = False, send_to_email: str | None = None) -> bool:  # noqa: PLR0911, PLR0912, PLR0914, PLR0915
         """
         Sends an email using the SMTP server previously specified in register_email_settings().
 
@@ -312,9 +314,10 @@ class SCLogger:
             else:
                 payload_type = "plain"
 
-        # Load the Gmail SMTP server configuration
+        # Load the SMTP server configuration
         smtp_server = self.email_settings.get("SMTPServer")
         smtp_port = self.email_settings.get("SMTPPort", 587)
+        smtp_security = str(self.email_settings.get("SMTPSecurity") or ("ssl" if smtp_port == 465 else "starttls")).strip().lower()
         smtp_username = self.email_settings.get("SMTPUsername")
         smtp_password = self.email_settings.get("SMTPPassword")
         send_from = self.email_settings.get("FromEmail")
@@ -332,6 +335,11 @@ class SCLogger:
         assert type(send_from) is str
         assert type(send_to) is str
 
+        if smtp_security not in {"starttls", "ssl"}:
+            self.log_message(f"send_email(): Invalid SMTPSecurity setting '{smtp_security}'. Must be one of: starttls, ssl.", "error")
+            return False
+        conn_desc = f"{smtp_server}:{smtp_port}, security={smtp_security}"
+
         try:
             # Create the email
             msg = MIMEMultipart()
@@ -346,20 +354,28 @@ class SCLogger:
             part = MIMEText(payload, payload_type)  # type: ignore[arg-type]
             msg.attach(part)
 
-            # Connect to the Gmail SMTP server
-            with smtplib.SMTP(host=smtp_server, port=smtp_port, timeout=10) as server:
-                server.starttls()  # Upgrade the connection to secure
-                server.login(smtp_username, smtp_password)  # Log in using App Password
+            # Connect to the SMTP server, verifying its certificate and hostname.
+            context = ssl.create_default_context()
+            if smtp_security == "ssl":
+                # Implicit TLS: the handshake happens on connect, so starttls() must not be called
+                smtp_connection: smtplib.SMTP = smtplib.SMTP_SSL(host=smtp_server, port=smtp_port, timeout=10, context=context)
+            else:
+                smtp_connection = smtplib.SMTP(host=smtp_server, port=smtp_port, timeout=10)
+
+            with smtp_connection as server:
+                if smtp_security != "ssl":
+                    server.starttls(context=context)  # Upgrade the connection to secure
+                server.login(smtp_username, smtp_password)  # Log in using the SMTP credentials
                 if test_mode:
                     self.log_message(f"Test mode: Email with subject '{msg['Subject']}' would be sent to {send_to}.", "summary")
                 else:
                     server.sendmail(send_from, send_to, msg.as_string())  # Send the email
 
         except TimeoutError as e:
-            self.log_message(f"send_email(): Timeout sending email: {e}", "error")
+            self.log_message(f"send_email(): Timeout sending email ({conn_desc}): {e}", "error")
             return False
         except smtplib.SMTPAuthenticationError as e:
-            self.log_message(f"send_email(): Authentication failed: {e}", "error")
+            self.log_message(f"send_email(): Authentication failed ({conn_desc}): {e}", "error")
             return False
         except smtplib.SMTPRecipientsRefused as e:
             self.log_message(f"send_email(): Recipients refused: {e}", "error")
@@ -368,10 +384,10 @@ class SCLogger:
             self.log_message(f"send_email(): Sender refused: {e}", "error")
             return False
         except (smtplib.SMTPException, ssl.SSLError) as e:
-            self.log_message(f"send_email(): SMTP/SSL error: {e}", "error")
+            self.log_message(f"send_email(): SMTP/SSL error ({conn_desc}): {e}", "error")
             return False
         except (OSError, ConnectionRefusedError, smtplib.SMTPServerDisconnected) as e:
-            self.log_message(f"send_email(): Network error sending email: {e}", "error")
+            self.log_message(f"send_email(): Network error sending email ({conn_desc}): {e}", "error")
             return False
         except Exception as e:  # noqa: BLE001
             self.log_message(f"send_email(): Unexpected error: {e}", "error")

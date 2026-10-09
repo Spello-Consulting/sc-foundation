@@ -23,6 +23,7 @@ Files:
 # SMTP_ENABLE=
 # SMTP_SERVER=
 # SMTP_PORT=
+# SMTP_SECURITY=
 # SMTP_USERNAME=
 # SMTP_PASSWORD=
 # SMTP_SEND_TO_EMAIL=
@@ -31,4 +32,6 @@ Email:
   EnableEmail: True
   SMTPServer: smtp.gmail.com
   SMTPPort: 587
+  # One of: starttls; ssl. If not set, ssl is used for port 465, otherwise starttls.
+  SMTPSecurity: starttls
   SubjectPrefix: 

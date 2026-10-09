@@ -1539,8 +1539,10 @@
 dictionary directly to this method with these keys:</p>
 <pre><code>SMTPServer: str, the SMTP server address
 SMTPPort: int, the SMTP server port (optional, defaults to 587)
+SMTPSecurity: str, how the connection is secured: "starttls" or "ssl" (implicit TLS). Optional, defaults to "ssl" if
+    SMTPPort is 465, otherwise "starttls".
 SMTPUsername: str, the username for the SMTP server
-SMTPPassword: str, the password for the SMTP server (preferably an App Password)
+SMTPPassword: str, the password for the SMTP server (an app password or API token, if your provider requires one)
 FromEmail: str, the emal address that the email comes from. If none, the SMTPUsername will be used.
 SendEmailsTo: str, the email address to send emails to
 SubjectPrefix: str, a prefix for email subjects (optional, default to None)

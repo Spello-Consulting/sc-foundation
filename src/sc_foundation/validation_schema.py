@@ -19,6 +19,7 @@ yaml_config_validation = {
             "EnableEmail": {"type": "boolean", "required": False, "nullable": True},
             "SMTPServer":  {"type": "string", "required": False, "nullable": True},
             "SMTPPort": {"type": "number", "required": False, "nullable": True, "min": 25, "max": 10000},
+            "SMTPSecurity": {"type": "string", "required": False, "nullable": True, "allowed": ["starttls", "ssl"]},
             "SMTPUsername": {"type": "string", "required": False, "nullable": True},
             "SMTPPassword": {"type": "string", "required": False, "nullable": True},
             "FromEmail": {"type": "string", "required": False, "nullable": True},
