@@ -202,11 +202,12 @@ class SCLogger:
         Use the SCConfigManager.get_email_settings() method to get a dictionary containing the email settings. Otherwise, you can pass a
         dictionary directly to this method with these keys:
 
-            SendEmailsTo: str, the email address to send emails to
             SMTPServer: str, the SMTP server address
             SMTPPort: int, the SMTP server port (optional, defaults to 587)
             SMTPUsername: str, the username for the SMTP server
             SMTPPassword: str, the password for the SMTP server (preferably an App Password)
+            FromEmail: str, the emal address that the email comes from. If none, the SMTPUsername will be used.
+            SendEmailsTo: str, the email address to send emails to
             SubjectPrefix: str, a prefix for email subjects (optional, default to None)
 
         Args:
@@ -266,7 +267,7 @@ class SCLogger:
         if security_warning:
             warning_message = (
                 "WARNING: The configuration file for this application includes one of the following deprecated settings:\n"
-                "Email.SMTPUsername, Email.SMTPPassword, or Email.SendEmailsTo. These settings may contain sensitive information.\n"
+                "Email.SMTPUsername, Email.SMTPPassword, Email.FromEmail, or Email.SendEmailsTo. These settings may contain sensitive information.\n"
                 "Consider moving these settings to environment variables for improved security. See the documentation for more information."
             )
             self.log_message(warning_message, "warning")
@@ -312,20 +313,29 @@ class SCLogger:
                 payload_type = "plain"
 
         # Load the Gmail SMTP server configuration
-        sender_email = self.email_settings.get("SMTPUsername")
-        send_to = send_to_email if send_to_email is not None else self.email_settings.get("SendEmailsTo")
         smtp_server = self.email_settings.get("SMTPServer")
         smtp_port = self.email_settings.get("SMTPPort", 587)
+        smtp_username = self.email_settings.get("SMTPUsername")
         smtp_password = self.email_settings.get("SMTPPassword")
+        send_from = self.email_settings.get("FromEmail")
+        send_to = send_to_email if send_to_email is not None else self.email_settings.get("SendEmailsTo")
 
-        if not sender_email or not send_to or not smtp_server or not smtp_port or not smtp_password:
-            self.log_fatal_error("send_email(): Email settings are incomplete. 'SMTPUsername', 'SendEmailsTo', 'SMTPServer' and 'SMTPPassword' must be provided.", report_stack=False, calling_function="send_email")
+        email_settings_complete = all((smtp_username, send_from, send_to, smtp_server, smtp_port, smtp_password))
+        if not email_settings_complete:
+            self.log_fatal_error("send_email(): Email settings are incomplete. 'SMTPUsername', 'FromEmail', 'SendEmailsTo', 'SMTPServer' and 'SMTPPassword' must be provided.", report_stack=False, calling_function="send_email")
             return False
+        assert all(value is not None for value in (smtp_username, send_from, send_to, smtp_server, smtp_port, smtp_password))
+        assert type(smtp_server) is str
+        assert type(smtp_port) is int
+        assert type(smtp_username) is str
+        assert type(smtp_password) is str
+        assert type(send_from) is str
+        assert type(send_to) is str
 
         try:
             # Create the email
             msg = MIMEMultipart()
-            msg["From"] = sender_email
+            msg["From"] = send_from
             msg["To"] = send_to
             if self.email_settings.get("SubjectPrefix", None) is not None:
                 msg["Subject"] = self.email_settings.get("SubjectPrefix", "") + subject
@@ -339,11 +349,11 @@ class SCLogger:
             # Connect to the Gmail SMTP server
             with smtplib.SMTP(host=smtp_server, port=smtp_port, timeout=10) as server:
                 server.starttls()  # Upgrade the connection to secure
-                server.login(sender_email, smtp_password)  # Log in using App Password
+                server.login(smtp_username, smtp_password)  # Log in using App Password
                 if test_mode:
                     self.log_message(f"Test mode: Email with subject '{msg['Subject']}' would be sent to {send_to}.", "summary")
                 else:
-                    server.sendmail(sender_email, send_to, msg.as_string())  # Send the email
+                    server.sendmail(send_from, send_to, msg.as_string())  # Send the email
 
         except TimeoutError as e:
             self.log_message(f"send_email(): Timeout sending email: {e}", "error")

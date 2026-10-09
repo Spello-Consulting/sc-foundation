@@ -100,19 +100,19 @@ def main():
 
     # SCCommon tests
     # test_select_folder_location()
-    test_get_geolocation(config)
-    test_get_external_ip()
-    test_get_dawn_dusk_times(config)
+    # test_get_geolocation(config)
+    # test_get_external_ip()
+    # test_get_dawn_dusk_times(config)
 
     # Test internet connection
     # if not SCCommon.check_internet_connection():
     #     logger.log_message("No internet connection detected.", "summary")
 
     # Setup email
-    # email_settings = config.get_email_settings()
-    # if email_settings is not None:
-    #     logger.register_email_settings(email_settings)
-    #     logger.send_email("sc_foundation test - main()", "This is a test email.")
+    email_settings = config.get_email_settings()
+    if email_settings is not None:
+        logger.register_email_settings(email_settings)
+        logger.send_email("sc_foundation test - main()", "This is a test email.")
 
     # See if we have a fatal error from a previous run
     if logger.get_fatal_error():

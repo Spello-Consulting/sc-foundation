@@ -267,9 +267,11 @@ class SCConfigManager:
                 return None
         email_settings = {
             "SMTPServer": os.environ.get("SMTP_SERVER") or self.get(config_section, "SMTPServer"),
-            "SMTPPort": os.environ.get("SMTP_PORT") or self.get(config_section, "SMTPPort", default=587),
+            "SMTPPort": int(os.environ.get("SMTP_PORT") or self.get(config_section, "SMTPPort", default=587)),  # pyright: ignore[reportArgumentType]
             "SMTPUsername": os.environ.get("SMTP_USERNAME") or self.get(config_section, "SMTPUsername"),
             "SMTPPassword": os.environ.get("SMTP_PASSWORD") or self.get(config_section, "SMTPPassword"),
+            "FromEmail": os.environ.get("SMTP_FROM_EMAIL") or self.get(config_section, "FromEmail") or
+                         os.environ.get("SMTP_USERNAME") or self.get(config_section, "SMTPUsername"),
             "SendEmailsTo": os.environ.get("SMTP_SEND_TO_EMAIL") or self.get(config_section, "SendEmailsTo"),
             "SubjectPrefix": os.environ.get("SMTP_SUBJECT_PREFIX") or self.get(config_section, "SubjectPrefix"),
             "SecurityWarning": False
