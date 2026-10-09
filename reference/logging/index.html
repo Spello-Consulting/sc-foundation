@@ -1537,11 +1537,12 @@
         <p>Registers email settings for sending emails.</p>
 <p>Use the SCConfigManager.get_email_settings() method to get a dictionary containing the email settings. Otherwise, you can pass a
 dictionary directly to this method with these keys:</p>
-<pre><code>SendEmailsTo: str, the email address to send emails to
-SMTPServer: str, the SMTP server address
+<pre><code>SMTPServer: str, the SMTP server address
 SMTPPort: int, the SMTP server port (optional, defaults to 587)
 SMTPUsername: str, the username for the SMTP server
 SMTPPassword: str, the password for the SMTP server (preferably an App Password)
+FromEmail: str, the emal address that the email comes from. If none, the SMTPUsername will be used.
+SendEmailsTo: str, the email address to send emails to
 SubjectPrefix: str, a prefix for email subjects (optional, default to None)
 </code></pre>
 
