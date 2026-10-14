@@ -28,3 +28,4 @@ src/*.csv
 src/*.log
 .env.target
 development/logs/
+site
