@@ -35,6 +35,26 @@ class NotifiableIssue:
     email_sent: bool = False
 
 
+DEFAULT_LOG_CHUNK_MAX_BYTES = 1_000_000
+
+
+@dataclass(frozen=True)
+class LogChunk:
+    """A chunk of log file content returned by SCLogger.read_logfile_since().
+
+    Attributes:
+        text: The new log content. When reset is True this is the (tail of the) whole file.
+        generation: The log file generation. Changes whenever the file is trimmed or the log file path changes.
+        offset: The byte offset to pass to the next read_logfile_since() call.
+        reset: True if the caller should discard any content it already holds and replace it with text.
+    """
+
+    text: str
+    generation: int
+    offset: int
+    reset: bool
+
+
 class SCLogger:
     """A class to handle logging messages with different verbosity levels."""
 
@@ -91,6 +111,9 @@ class SCLogger:
         self._logfile_lock = threading.RLock()
         self._fatal_error_file_lock = threading.RLock()
 
+        # Incremented whenever the log file is rewritten (trimmed) or its path changes. Used by read_logfile_since()
+        self._log_generation = 0
+
         # Set up the heartbeat monitor attributes
         self.heartbeat_config = {}
         self.heartbeat_last_post = None
@@ -122,7 +145,11 @@ class SCLogger:
         self.file_logging_enabled = self.logfile_name is not None
 
         if self.file_logging_enabled and self.logfile_name is not None:
-            self.logfile_path = SCCommon.select_file_location(self.logfile_name, create_folder=True)
+            new_logfile_path = SCCommon.select_file_location(self.logfile_name, create_folder=True)
+            with self._logfile_lock:
+                if new_logfile_path != self.logfile_path:
+                    self._log_generation += 1
+                self.logfile_path = new_logfile_path
 
             # Truncate the log file if it exists
             self._initialise_monitoring_logfile()
@@ -146,6 +173,90 @@ class SCLogger:
                     # Overwrite the file with only the last 1000 lines
                     with self.logfile_path.open("w", encoding="utf-8") as file2:
                         file2.writelines(keep_lines)
+
+                    # Byte offsets held by read_logfile_since() callers are no longer valid
+                    self._log_generation += 1
+
+    def read_logfile(self) -> str:
+        """Return the full contents of the log file.
+
+        The file is read while holding the logfile lock, so the result never reflects a partially written trim.
+
+        Returns:
+            The log file contents, or an empty string if file logging is disabled or the file does not exist yet.
+        """
+        with self._logfile_lock:
+            path = self._readable_logfile_path()
+            if path is None:
+                return ""
+            return path.read_bytes().decode("utf-8", errors="replace")
+
+    def read_logfile_since(self, generation: int | None = None, offset: int = 0, max_bytes: int = DEFAULT_LOG_CHUNK_MAX_BYTES) -> LogChunk:
+        """Return log file content written since a previous call - the equivalent of `tail -f`.
+
+        Make the first call with no arguments. This returns the whole file (reset=True). On each subsequent call pass
+        back the generation and offset from the previous LogChunk to receive only the new content. If the log file
+        has been trimmed, truncated or replaced since the previous call, the whole file is returned again with
+        reset=True and the caller should replace the content it holds.
+
+        Example:
+            chunk = logger.read_logfile_since()
+            display = chunk.text
+            ...
+            chunk = logger.read_logfile_since(chunk.generation, chunk.offset)
+            display = chunk.text if chunk.reset else display + chunk.text
+
+        Args:
+            generation: The generation returned by the previous call, or None for the first call.
+            offset: The byte offset returned by the previous call.
+            max_bytes: The maximum number of bytes to return in one call. When reset is True and the file is larger
+                than this, only the last max_bytes (starting at a line boundary) are returned. Otherwise, the remaining
+                content is returned by subsequent calls.
+
+        Returns:
+            A LogChunk containing the new content and the generation and offset to use on the next call.
+
+        Raises:
+            ValueError: If max_bytes is less than 1.
+        """
+        if max_bytes < 1:
+            msg = "read_logfile_since(): max_bytes must be at least 1."
+            raise ValueError(msg)
+
+        with self._logfile_lock:
+            current_generation = self._log_generation
+            path = self._readable_logfile_path()
+            size = path.stat().st_size if path is not None else 0
+
+            # The file has been trimmed or replaced since the caller's last read, or this is the first read
+            reset = generation != current_generation or offset < 0 or offset > size
+            start = 0 if reset else offset
+            if reset and size > max_bytes:
+                start = size - max_bytes
+
+            if path is None or start >= size:
+                return LogChunk(text="", generation=current_generation, offset=size if path is not None else 0, reset=reset)
+
+            with path.open("rb") as file:
+                file.seek(start)
+                data = file.read(min(size - start, max_bytes))
+
+        next_offset = start + len(data)
+
+        # A partial read ends mid-file; stop at the last complete line so we never split a line (or a UTF-8 character).
+        # The remainder is returned by the next call.
+        if next_offset < size:
+            last_newline = data.rfind(b"\n")
+            if last_newline >= 0:
+                data = data[:last_newline + 1]
+                next_offset = start + len(data)
+
+        # A reset that starts mid-file begins mid-line; drop the partial first line
+        if reset and start > 0:
+            first_newline = data.find(b"\n")
+            data = data[first_newline + 1:] if first_newline >= 0 else b""
+
+        return LogChunk(text=data.decode("utf-8", errors="replace"), generation=current_generation, offset=next_offset, reset=reset)
 
     def log_message(self, message: str, verbosity: str = "summary") -> None:
         """Writes a log message to the console and/or a file based on verbosity settings.
@@ -731,6 +842,12 @@ class SCLogger:
             return
 
         self.trim_logfile()
+
+    def _readable_logfile_path(self) -> Path | None:
+        """Return the log file path if file logging is enabled and the file exists, otherwise None."""
+        if not self.file_logging_enabled or self.logfile_path is None or not self.logfile_path.is_file():
+            return None
+        return self.logfile_path
 
     def _build_twillo_client(self) -> tuple[Client | None, str | None]:  # noqa: PLR6301
         """Construct a Twilio client from env vars, or return (None, reason).
