@@ -6,6 +6,7 @@ import os
 import platform
 import re
 import subprocess  # noqa: S404
+import tomllib
 from pathlib import Path
 
 import httpx
@@ -14,6 +15,7 @@ import validators
 from tzfpy import get_tz
 
 HTTP_TIMEOUT = 10
+GIT_TIMEOUT = 10
 UA = {"User-Agent": "failover-monitor/1.0"}
 # Multiple IP-echo services, tried in order — protects against any one being down.
 IP_ECHO_URLS = [
@@ -476,3 +478,99 @@ class SCCommon:
                 pass
 
         return return_dict
+
+    @staticmethod
+    def _run_git(project_root: Path, *args: str) -> str | None:
+        """Run a git command in project_root.
+
+        Args:
+            project_root: The directory to run git in.
+            *args: The git sub-command and its arguments.
+
+        Returns:
+            The stripped stdout, or None if git is unavailable or the command failed.
+        """
+        try:
+            result = subprocess.run(  # noqa: S603
+                ["git", *args],  # noqa: S607
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=GIT_TIMEOUT,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip()
+
+    @staticmethod
+    def get_deployment_info() -> dict:
+        """Return project and git deployment information for the project.
+
+        The project root is located using get_project_root(). Project details are read from pyproject.toml in
+        that folder. Git details are read from the git repository in that folder. Git status is based on the last
+        fetch; no network access is performed.
+
+        Returns:
+            A dictionary with the following keys:
+                - name, version, description: From the [project] table of pyproject.toml. None if unavailable.
+                - git_branch: The current branch name (None if detached or not a git repo).
+                - git_tag: The latest tag reachable from HEAD (None if there are no tags).
+                - git_remote: The URL of the upstream remote (or origin if no upstream is set).
+                - git_status: "Ahead", "Behind", "Up to date", "Diverged" or "Unknown" if it cannot be determined.
+                - git_changes: Count of changed files, staged and unstaged (None if not a git repo).
+        """
+        project_root = SCCommon.get_project_root()
+
+        info: dict = {
+            "name": None,
+            "version": None,
+            "description": None,
+            "git_branch": None,
+            "git_tag": None,
+            "git_remote": None,
+            "git_status": "Unknown",
+            "git_changes": None,
+        }
+
+        pyproject_path = project_root / "pyproject.toml"
+        if pyproject_path.is_file():
+            try:
+                with pyproject_path.open("rb") as f:
+                    project = tomllib.load(f).get("project", {})
+            except (OSError, tomllib.TOMLDecodeError):
+                project = {}
+            for key in ("name", "version", "description"):
+                info[key] = project.get(key)
+
+        # Not a git repo (or git not installed)
+        if SCCommon._run_git(project_root, "rev-parse", "--git-dir") is None:
+            return info
+
+        info["git_branch"] = SCCommon._run_git(project_root, "branch", "--show-current") or None
+        info["git_tag"] = SCCommon._run_git(project_root, "describe", "--tags", "--abbrev=0")
+
+        upstream = SCCommon._run_git(project_root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+        remote_name = upstream.split("/", 1)[0] if upstream else "origin"
+        info["git_remote"] = SCCommon._run_git(project_root, "remote", "get-url", remote_name)
+
+        if upstream:
+            counts = SCCommon._run_git(project_root, "rev-list", "--left-right", "--count", "@{u}...HEAD")
+            if counts:
+                behind, ahead = (int(n) for n in counts.split())
+                if ahead and behind:
+                    info["git_status"] = "Diverged"
+                elif ahead:
+                    info["git_status"] = "Ahead"
+                elif behind:
+                    info["git_status"] = "Behind"
+                else:
+                    info["git_status"] = "Up to date"
+
+        porcelain = SCCommon._run_git(project_root, "status", "--porcelain")
+        if porcelain is not None:
+            info["git_changes"] = len(porcelain.splitlines())
+
+        return info

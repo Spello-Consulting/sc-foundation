@@ -6,7 +6,7 @@ The Spello Consulting Foundation library provides some foundational classes for:
 
 - [SCCommon](reference/common.md): Some common functions used by other classes.
 - [SCConfigManager](reference/configmanager.md): Reading from and validating YAML style config files
-- [SCLogging](reference/logging.md): Logging messages to the console and a log file and sending email in plain text or HTML format
+- [SCLogger](reference/logging.md): Logging messages to the console and a log file and sending email in plain text or HTML format
 - [CSVReader](reference/csvreader.md): Reading data from and and writing to CSV files
 - [DateHelper](reference/datehelper.md): Date and datetime helper functions
 - [JSONEncoder](reference/jsonencoder.md): Helps convert dicts and lists to json and back, preserving datetime and enum data types.

@@ -96,7 +96,7 @@ def main():
     except RuntimeError as e:
         print(f"Logger initialisation error: {e}", file=sys.stderr)
         return
-    logger.log_message("This is a test message at the summary level.", "summary")
+    logger.log_message(f"This is a test message at the summary level. Log file path: {logger.get_logfile_path()}", "summary")
 
     # SCCommon tests
     # test_select_folder_location()
@@ -107,6 +107,10 @@ def main():
     # Test internet connection
     # if not SCCommon.check_internet_connection():
     #     logger.log_message("No internet connection detected.", "summary")
+
+    # Test get_deployment_info()
+    deployment_info = SCCommon.get_deployment_info()
+    print(f"\n\ntest_get_deployment_info() deployment_info: {deployment_info}")
 
     # Setup email
     email_settings = config.get_email_settings()

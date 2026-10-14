@@ -24,7 +24,7 @@ nav:
   - API Reference:
       - Common Utilities: reference/common.md
       - SCConfigManager: reference/configmanager.md
-      - SCLogging: reference/logging.md
+      - SCLogger: reference/logging.md
 
       - CSVReader: reference/csvreader.md
       - DateHelper: reference/datehelper.md

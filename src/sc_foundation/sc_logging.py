@@ -99,6 +99,10 @@ class SCLogger:
 
         self.initialise_settings(logger_settings)
 
+    def get_logfile_path(self) -> str | None:
+        """Returns the path to the current log file, if it exists."""
+        return str(self.logfile_path) if self.logfile_path is not None else None
+
     def initialise_settings(self, logger_settings: dict):
         """
         Set / reset the logger configuration settings. See the __init__() method for the structure of logger_settings.

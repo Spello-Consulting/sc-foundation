@@ -335,3 +335,89 @@ def test_get_geo_location_default_fallback(mock_get_ip, mock_requests_get):
     assert result["latitude"] == 0.0
     assert result["longitude"] == 0.0
     assert result["timezone"] == "UTC"
+
+
+# --- get_deployment_info ---
+
+
+def _git(cwd: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)  # noqa: S603, S607
+
+
+@pytest.fixture
+def git_project(tmp_path, monkeypatch):
+    """Create a git project with a bare remote, and point get_project_root at it.
+
+    Returns:
+        The project directory.
+    """
+    remote = tmp_path / "remote.git"
+    project = tmp_path / "project"
+    project.mkdir()
+    _git(tmp_path, "init", "--bare", "-b", "main", str(remote))
+    (project / "pyproject.toml").write_text('[project]\nname = "demo"\nversion = "1.2.3"\ndescription = "A demo"\n')
+    _git(project, "init", "-b", "main")
+    _git(project, "config", "user.email", "test@example.com")
+    _git(project, "config", "user.name", "Test")
+    _git(project, "add", ".")
+    _git(project, "commit", "-m", "init")
+    _git(project, "tag", "v1.2.3")
+    _git(project, "remote", "add", "origin", str(remote))
+    _git(project, "push", "-u", "origin", "main")
+    monkeypatch.setenv("SC_FOUNDATION_PROJECT_ROOT", str(project))
+    return project
+
+
+@pytest.mark.usefixtures("git_project")
+def test_get_deployment_info_up_to_date():
+    """Test get_deployment_info for a clean, synced repo."""
+    info = SCCommon.get_deployment_info()
+    assert info["name"] == "demo"
+    assert info["version"] == "1.2.3"
+    assert info["description"] == "A demo"
+    assert info["git_branch"] == "main"
+    assert info["git_tag"] == "v1.2.3"
+    assert info["git_remote"].endswith("remote.git")
+    assert info["git_status"] == "Up to date"
+    assert info["git_changes"] == 0
+
+
+def test_get_deployment_info_ahead_and_changes(git_project):
+    """Test get_deployment_info with a local commit and uncommitted changes."""
+    (git_project / "a.txt").write_text("a")
+    _git(git_project, "add", "a.txt")
+    _git(git_project, "commit", "-m", "second")
+    (git_project / "b.txt").write_text("b")  # untracked
+    (git_project / "pyproject.toml").write_text('[project]\nname = "demo2"\n')  # unstaged
+    info = SCCommon.get_deployment_info()
+    assert info["git_status"] == "Ahead"
+    assert info["git_changes"] == 2
+    assert info["name"] == "demo2"
+    assert info["version"] is None
+
+
+def test_get_deployment_info_behind(git_project, tmp_path):
+    """Test get_deployment_info when the remote has a newer commit."""
+    other = tmp_path / "other"
+    _git(tmp_path, "clone", str(tmp_path / "remote.git"), str(other))
+    _git(other, "config", "user.email", "test@example.com")
+    _git(other, "config", "user.name", "Test")
+    (other / "c.txt").write_text("c")
+    _git(other, "add", "c.txt")
+    _git(other, "commit", "-m", "remote change")
+    _git(other, "push")
+    _git(git_project, "fetch")
+    assert SCCommon.get_deployment_info()["git_status"] == "Behind"
+
+
+def test_get_deployment_info_not_a_git_repo(tmp_path, monkeypatch):
+    """Test get_deployment_info outside a git repository."""
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "nogit"\nversion = "0.1.0"\n')
+    monkeypatch.setenv("SC_FOUNDATION_PROJECT_ROOT", str(tmp_path))
+    with patch.object(SCCommon, "_run_git", return_value=None):
+        info = SCCommon.get_deployment_info()
+    assert info["name"] == "nogit"
+    assert info["version"] == "0.1.0"
+    assert info["git_branch"] is None
+    assert info["git_status"] == "Unknown"
+    assert info["git_changes"] is None
