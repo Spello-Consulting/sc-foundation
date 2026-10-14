@@ -392,6 +392,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#reading-and-tailing-the-log-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading and tailing the log file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sc_foundation.sc_logging.SCLogger" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -502,6 +513,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sc_foundation.sc_logging.SCLogger.read_logfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_logfile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sc_foundation.sc_logging.SCLogger.read_logfile_since" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_logfile_since
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sc_foundation.sc_logging.SCLogger.register_email_settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -583,6 +616,17 @@
     <span class="md-ellipsis">
       
         trim_logfile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sc_foundation.sc_logging.LogChunk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LogChunk
       
     </span>
   </a>
@@ -744,6 +788,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#reading-and-tailing-the-log-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading and tailing the log file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sc_foundation.sc_logging.SCLogger" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -854,6 +909,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sc_foundation.sc_logging.SCLogger.read_logfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_logfile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sc_foundation.sc_logging.SCLogger.read_logfile_since" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        read_logfile_since
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sc_foundation.sc_logging.SCLogger.register_email_settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -941,6 +1018,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#sc_foundation.sc_logging.LogChunk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LogChunk
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -959,6 +1047,20 @@
 
 
 <h1 id="logging">Logging</h1>
+<h2 id="reading-and-tailing-the-log-file">Reading and tailing the log file</h2>
+<p><code>SCLogger.read_logfile()</code> returns the full contents of the log file, and <code>SCLogger.read_logfile_since()</code> returns only
+the content written since a previous call - the equivalent of <code>tail -f</code>. Both read the file while holding the logger's
+logfile lock, so they never see a partially completed trim.</p>
+<p>Each call to <code>read_logfile_since()</code> returns a <code>LogChunk</code>. Pass its <code>generation</code> and <code>offset</code> back on the next call. If
+the log file has been trimmed (see <code>trim_logfile()</code>), truncated or replaced since the previous call, the chunk has
+<code>reset=True</code> and contains the whole file, so the caller should replace what it holds rather than append:</p>
+<pre><code class="language-python">chunk = logger.read_logfile_since()
+content = chunk.text
+
+# ... later, e.g. polled every second by a web page
+chunk = logger.read_logfile_since(chunk.generation, chunk.offset)
+content = chunk.text if chunk.reset else content + chunk.text
+</code></pre>
 
 
 <div class="doc doc-object doc-class">
@@ -1552,6 +1654,190 @@
             <td>
               <div class="doc-md-description">
                 <p>True if the heartbeat URL is reachable or there's nothing to do, False otherwise.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sc_foundation.sc_logging.SCLogger.read_logfile" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">read_logfile</span><span class="p">()</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return the full contents of the log file.</p>
+<p>The file is read while holding the logfile lock, so the result never reflects a partially written trim.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The log file contents, or an empty string if file logging is disabled or the file does not exist yet.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sc_foundation.sc_logging.SCLogger.read_logfile_since" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">read_logfile_since</span><span class="p">(</span><span class="n">generation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_bytes</span><span class="o">=</span><span class="n">DEFAULT_LOG_CHUNK_MAX_BYTES</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return log file content written since a previous call - the equivalent of <code>tail -f</code>.</p>
+<p>Make the first call with no arguments. This returns the whole file (reset=True). On each subsequent call pass
+back the generation and offset from the previous LogChunk to receive only the new content. If the log file
+has been trimmed, truncated or replaced since the previous call, the whole file is returned again with
+reset=True and the caller should replace the content it holds.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <p>chunk = logger.read_logfile_since()
+display = chunk.text
+...
+chunk = logger.read_logfile_since(chunk.generation, chunk.offset)
+display = chunk.text if chunk.reset else display + chunk.text</p>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>generation</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The generation returned by the previous call, or None for the first call.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>offset</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The byte offset returned by the previous call.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_bytes</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The maximum number of bytes to return in one call. When reset is True and the file is larger
+than this, only the last max_bytes (starting at a line boundary) are returned. Otherwise, the remaining
+content is returned by subsequent calls.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="sc_foundation.sc_logging.DEFAULT_LOG_CHUNK_MAX_BYTES">DEFAULT_LOG_CHUNK_MAX_BYTES</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="sc_foundation.sc_logging.LogChunk" href="#sc_foundation.sc_logging.LogChunk">LogChunk</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A LogChunk containing the new content and the generation and offset to use on the next call.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If max_bytes is less than 1.</p>
               </div>
             </td>
           </tr>
@@ -2207,6 +2493,104 @@ still function). This keeps the app runnable before Twilio is configured.</p>
     </div>
 
 </div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="sc_foundation.sc_logging.LogChunk"></a>
+    <div class="doc doc-contents first">
+
+
+
+        <p>A chunk of log file content returned by SCLogger.read_logfile_since().</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="sc_foundation.sc_logging.LogChunk.text">text</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The new log content. When reset is True this is the (tail of the) whole file.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="sc_foundation.sc_logging.LogChunk.generation">generation</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The log file generation. Changes whenever the file is trimmed or the log file path changes.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="sc_foundation.sc_logging.LogChunk.offset">offset</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The byte offset to pass to the next read_logfile_since() call.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="sc_foundation.sc_logging.LogChunk.reset">reset</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>True if the caller should discard any content it already holds and replace it with text.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
 
 
 
