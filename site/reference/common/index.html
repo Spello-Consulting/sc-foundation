@@ -369,6 +369,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sc_foundation.sc_common.SCCommon.get_deployment_info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_deployment_info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sc_foundation.sc_common.SCCommon.get_external_ip" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -529,7 +540,7 @@
   <span class="md-ellipsis">
     
   
-    SCLogging
+    SCLogger
   
 
     
@@ -715,6 +726,17 @@
     <span class="md-ellipsis">
       
         check_internet_connection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sc_foundation.sc_common.SCCommon.get_deployment_info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_deployment_info
       
     </span>
   </a>
@@ -1040,6 +1062,60 @@
             <td>
               <div class="doc-md-description">
                 <p>True if the system is connected to the internet, False otherwise.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sc_foundation.sc_common.SCCommon.get_deployment_info" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">get_deployment_info</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return project and git deployment information for the project.</p>
+<p>The project root is located using get_project_root(). Project details are read from pyproject.toml in
+that folder. Git details are read from the git repository in that folder. Git status is based on the last
+fetch; no network access is performed.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="dict">dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A dictionary with the following keys:
+- name, version, description: From the [project] table of pyproject.toml. None if unavailable.
+- git_branch: The current branch name (None if detached or not a git repo).
+- git_tag: The latest tag reachable from HEAD (None if there are no tags).
+- git_remote: The URL of the upstream remote (or origin if no upstream is set).
+- git_status: "Ahead", "Behind", "Up to date", "Diverged" or "Unknown" if it cannot be determined.
+- git_changes: Count of changed files, staged and unstaged (None if not a git repo).</p>
               </div>
             </td>
           </tr>
