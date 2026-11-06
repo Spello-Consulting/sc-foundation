@@ -30,3 +30,4 @@ nav:
       - DateHelper: reference/datehelper.md
       - JSONEncoder: reference/jsonencoder.md
       - ThreadManager: reference/thread_manager.md
+      - sc-send-email command: reference/send_email_cli.md

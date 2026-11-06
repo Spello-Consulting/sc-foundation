@@ -259,9 +259,46 @@ class SCConfigManager:
 
         Returns:
             settings (dict): A dictionary of email settings or None if email is disabled or not configured correctly.
+                Raises RuntimeError if the SMTP_SECURITY environment variable or the SMTPSecurity config setting is not one of
+                "starttls" or "ssl".
+        """
+        return SCConfigManager._build_email_settings(
+            lambda key, default=None: self.get(config_section, key, default=default), config_section
+        )
+
+    @staticmethod
+    def build_email_settings(section_settings: dict | None = None, config_section: str | None = "Email") -> dict | None:
+        """Returns the email settings from environment variables and/or a dict of config settings, without a config file.
+
+        This applies the same rules as get_email_settings(): the SMTP_* environment variables take precedence, falling
+        back to the values in section_settings (the contents of the config file's Email section, if you have one). With
+        no section_settings, every setting comes from the environment and email is enabled unless SMTP_ENABLE is 0 / false.
+
+        Args:
+            section_settings (Optional[dict], optional): The email settings section of a config file, e.g. {"SubjectPrefix": "[App] "}.
+            config_section (Optional[str], optional): The section name, used in error messages.
+
+        Returns:
+            settings (dict): A dictionary of email settings or None if email is disabled or not configured correctly.
+                Raises RuntimeError if the SMTP_SECURITY environment variable or the SMTPSecurity setting is not one of
+                "starttls" or "ssl".
+        """
+        values = section_settings if isinstance(section_settings, dict) else {}
+        return SCConfigManager._build_email_settings(lambda key, default=None: values.get(key, default), config_section)
+
+    @staticmethod
+    def _build_email_settings(lookup: Callable[..., object], config_section: str | None) -> dict | None:
+        """Build the email settings dict, giving environment variables precedence over lookup().
+
+        Args:
+            lookup (Callable): Called as lookup(key, default=...) to read a setting from the config section.
+            config_section (Optional[str]): The config section name, used in error messages.
+
+        Returns:
+            settings (dict): A dictionary of email settings or None if email is disabled or not configured correctly.
 
         Raises:
-            RuntimeError: If the SMTP_SECURITY environment variable or the SMTPSecurity config setting is not one of "starttls" or "ssl".
+            RuntimeError: If the SMTP security mode is not one of "starttls" or "ssl".
         """
         # fir check to see if we have an EnableEmail setting
         enable_email = os.environ.get("SMTP_ENABLE")
@@ -269,33 +306,33 @@ class SCConfigManager:
             return None
 
         if enable_email is None:    # Nothing in environment variables, check the config file
-            enable_email = self.get(config_section, "EnableEmail", default=True)
+            enable_email = lookup("EnableEmail", default=True)
             if not enable_email:
                 return None
 
         # Work out the security mode, which defaults from the port number if not specified
-        smtp_port = int(os.environ.get("SMTP_PORT") or self.get(config_section, "SMTPPort", default=587))  # pyright: ignore[reportArgumentType]
+        smtp_port = int(os.environ.get("SMTP_PORT") or lookup("SMTPPort", default=587))  # pyright: ignore[reportArgumentType]
         default_security = "ssl" if smtp_port == 465 else "starttls"
-        smtp_security = str(os.environ.get("SMTP_SECURITY") or self.get(config_section, "SMTPSecurity") or default_security).strip().lower()
+        smtp_security = str(os.environ.get("SMTP_SECURITY") or lookup("SMTPSecurity") or default_security).strip().lower()
         if smtp_security not in {"starttls", "ssl"}:
             msg = f"Invalid SMTP security mode '{smtp_security}'. SMTP_SECURITY / {config_section}.SMTPSecurity must be one of: starttls, ssl."
             raise RuntimeError(msg)
 
         email_settings = {
-            "SMTPServer": os.environ.get("SMTP_SERVER") or self.get(config_section, "SMTPServer"),
+            "SMTPServer": os.environ.get("SMTP_SERVER") or lookup("SMTPServer"),
             "SMTPPort": smtp_port,
             "SMTPSecurity": smtp_security,
-            "SMTPUsername": os.environ.get("SMTP_USERNAME") or self.get(config_section, "SMTPUsername"),
-            "SMTPPassword": os.environ.get("SMTP_PASSWORD") or self.get(config_section, "SMTPPassword"),
-            "FromEmail": os.environ.get("SMTP_FROM_EMAIL") or self.get(config_section, "FromEmail") or
-                         os.environ.get("SMTP_USERNAME") or self.get(config_section, "SMTPUsername"),
-            "SendEmailsTo": os.environ.get("SMTP_SEND_TO_EMAIL") or self.get(config_section, "SendEmailsTo"),
-            "SubjectPrefix": os.environ.get("SMTP_SUBJECT_PREFIX") or self.get(config_section, "SubjectPrefix"),
+            "SMTPUsername": os.environ.get("SMTP_USERNAME") or lookup("SMTPUsername"),
+            "SMTPPassword": os.environ.get("SMTP_PASSWORD") or lookup("SMTPPassword"),
+            "FromEmail": os.environ.get("SMTP_FROM_EMAIL") or lookup("FromEmail") or
+                         os.environ.get("SMTP_USERNAME") or lookup("SMTPUsername"),
+            "SendEmailsTo": os.environ.get("SMTP_SEND_TO_EMAIL") or lookup("SendEmailsTo"),
+            "SubjectPrefix": os.environ.get("SMTP_SUBJECT_PREFIX") or lookup("SubjectPrefix"),
             "SecurityWarning": False
         }
 
         # If the Username, password or SendEmailTo settings are set in the config file, include a security warning
-        if self.get(config_section, "SMTPUsername") or self.get(config_section, "SMTPPassword") or self.get(config_section, "SendEmailsTo"):
+        if lookup("SMTPUsername") or lookup("SMTPPassword") or lookup("SendEmailsTo"):
             email_settings["SecurityWarning"] = True
 
         # Only return true if all the required email settings have been specified (excluding SubjectPrefix and SecurityWarning)
