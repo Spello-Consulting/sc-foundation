@@ -386,6 +386,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sc_foundation.sc_config_mgr.SCConfigManager.build_email_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build_email_settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sc_foundation.sc_config_mgr.SCConfigManager.check_for_config_changes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -622,6 +633,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../send_email_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sc-send-email command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -671,6 +710,17 @@
     <span class="md-ellipsis">
       
         __init__
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sc_foundation.sc_config_mgr.SCConfigManager.build_email_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        build_email_settings
       
     </span>
   </a>
@@ -926,6 +976,103 @@
             <td>
               <div class="doc-md-description">
                 <p>If the config file does not exist and no default config is provided, or if there are YAML errors in the config file.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sc_foundation.sc_config_mgr.SCConfigManager.build_email_settings" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_email_settings</span><span class="p">(</span><span class="n">section_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_section</span><span class="o">=</span><span class="s1">&#39;Email&#39;</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Returns the email settings from environment variables and/or a dict of config settings, without a config file.</p>
+<p>This applies the same rules as get_email_settings(): the SMTP_* environment variables take precedence, falling
+back to the values in section_settings (the contents of the config file's Email section, if you have one). With
+no section_settings, every setting comes from the environment and email is enabled unless SMTP_ENABLE is 0 / false.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>section_settings</code>
+            </td>
+            <td>
+                  <code><span title="Optional">Optional</span>[<span title="dict">dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The email settings section of a config file, e.g. {"SubjectPrefix": "[App] "}.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>config_section</code>
+            </td>
+            <td>
+                  <code><span title="Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The section name, used in error messages.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;Email&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>settings</code></td>            <td>
+                  <code><span title="dict">dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A dictionary of email settings or None if email is disabled or not configured correctly.
+Raises RuntimeError if the SMTP_SECURITY environment variable or the SMTPSecurity setting is not one of
+"starttls" or "ssl".</p>
               </div>
             </td>
           </tr>
@@ -1304,30 +1451,9 @@ the port is 465, otherwise "starttls".</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A dictionary of email settings or None if email is disabled or not configured correctly.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<p><span class="doc-section-title">Raises:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><span title="RuntimeError">RuntimeError</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>If the SMTP_SECURITY environment variable or the SMTPSecurity config setting is not one of "starttls" or "ssl".</p>
+                <p>A dictionary of email settings or None if email is disabled or not configured correctly.
+Raises RuntimeError if the SMTP_SECURITY environment variable or the SMTPSecurity config setting is not one of
+"starttls" or "ssl".</p>
               </div>
             </td>
           </tr>

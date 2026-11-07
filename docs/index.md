@@ -10,6 +10,7 @@ The Spello Consulting Foundation library provides some foundational classes for:
 - [CSVReader](reference/csvreader.md): Reading data from and and writing to CSV files
 - [DateHelper](reference/datehelper.md): Date and datetime helper functions
 - [JSONEncoder](reference/jsonencoder.md): Helps convert dicts and lists to json and back, preserving datetime and enum data types.
+- [sc-send-email](reference/send_email_cli.md): A command-line tool for sending an email from shell scripts, using the same email settings.
 
 ## Installing the library
 
