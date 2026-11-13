@@ -4,7 +4,9 @@ import datetime as dt
 import enum
 import importlib
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
 
 from dateutil.parser import parse
@@ -40,7 +42,8 @@ class JSONEncoder:
             save_data = copy.deepcopy(data)
             save_data = JSONEncoder._add_datatype_hints(save_data)
         except (TypeError, ValueError) as e:
-            raise RuntimeError from e
+            msg = f"Failed to prepare data for JSON: {type(e).__name__}: {e}"
+            raise RuntimeError(msg) from e
         return convert(save_data)
 
     @staticmethod
@@ -61,7 +64,8 @@ class JSONEncoder:
             save_data = JSONEncoder._add_datatype_hints(save_data)
             json_string = json.dumps(save_data, indent=4, default=JSONEncoder._encode_object)
         except (TypeError, ValueError) as e:
-            raise RuntimeError from e
+            msg = f"Failed to serialise data to JSON: {type(e).__name__}: {e}"
+            raise RuntimeError(msg) from e
         else:
             return json_string
 
@@ -82,7 +86,8 @@ class JSONEncoder:
             json_data = json.loads(json_string)
             return_data = JSONEncoder.decode_object(json_data)
         except (json.JSONDecodeError, ValueError) as e:
-            raise RuntimeError from e
+            msg = f"Failed to deserialise JSON string: {type(e).__name__}: {e}"
+            raise RuntimeError(msg) from e
         else:
             return return_data
 
@@ -102,23 +107,44 @@ class JSONEncoder:
         """
         # Make sure the parent folder exists before trying to write the file
         file_path.parent.mkdir(parents=True, exist_ok=True)     # Issue 27
+        temporary_path: Path | None = None
         try:
-            temporary_path = file_path.with_suffix(".tmp")
+            save_data = copy.deepcopy(data)
+            save_data = JSONEncoder._add_datatype_hints(save_data)
 
+            # Write to a unique temp file in the target directory so concurrent writers never share a
+            # temp file, and replace() remains an atomic rename on the same filesystem.
+            fd, temporary_name = tempfile.mkstemp(dir=file_path.parent, prefix=f".{file_path.name}.", suffix=".tmp")
+            temporary_path = Path(temporary_name)
             try:
-                with temporary_path.open("w", encoding="utf-8") as json_file:
-                    save_data = copy.deepcopy(data)
-                    save_data = JSONEncoder._add_datatype_hints(save_data)
+                with os.fdopen(fd, "w", encoding="utf-8") as json_file:
                     json.dump(save_data, json_file, indent=4, default=JSONEncoder._encode_object)
+                    json_file.flush()
+                    os.fsync(json_file.fileno())
             except UnicodeEncodeError:
+                # fd is already closed by the with block; reopen the same temp file (truncating it)
                 with temporary_path.open("w", encoding="latin-1") as json_file:
-                    save_data = copy.deepcopy(data)
-                    save_data = JSONEncoder._add_datatype_hints(save_data)
                     json.dump(save_data, json_file, indent=4, default=JSONEncoder._encode_object)
+                    json_file.flush()
+                    os.fsync(json_file.fileno())
+
+            # mkstemp creates the file as 0600; keep the existing file's mode, or use a normal default.
+            try:
+                mode = file_path.stat().st_mode & 0o777
+            except FileNotFoundError:
+                mode = 0o644
+            temporary_path.chmod(mode)
 
             temporary_path.replace(file_path)
         except (TypeError, ValueError, OSError) as e:
-            raise RuntimeError from e
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+            msg = f"Failed to save JSON to {file_path}: {type(e).__name__}: {e}"
+            raise RuntimeError(msg) from e
+        except BaseException:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+            raise
         return True
 
     @staticmethod
@@ -149,7 +175,8 @@ class JSONEncoder:
                     return_data = JSONEncoder.decode_object(json_data)
                     return return_data
         except (json.JSONDecodeError, OSError) as e:
-            raise RuntimeError from e
+            msg = f"Failed to read JSON from {file_path}: {type(e).__name__}: {e}"
+            raise RuntimeError(msg) from e
 
     @staticmethod
     def _add_datatype_hints(obj):
